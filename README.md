@@ -6,7 +6,7 @@
 
 **LLM-assisted security incident triage for financial institutions.**
 
-`llm-triage` ingests open security incidents from an incident-tracker API, uses a large language model (Anthropic Claude or OpenAI GPT-4o-mini) to classify their severity and generate concrete investigation steps, then writes the enriched results back to the tracker — all in a single automated pipeline.
+`llm-triage` ingests open security incidents from an incident-tracker API, uses a large language model provider to classify their severity and generate concrete investigation steps, then writes the enriched results back to the tracker — all in a single automated pipeline.
 
 ---
 
@@ -85,7 +85,8 @@ incident-tracker-api
 
 - Python 3.11+
 - An incident-tracker-api reachable at `http://localhost:5000` (or configured via `INCIDENT_TRACKER_URL`)
-- An Anthropic API key **or** an OpenAI API key
+- An Anthropic API key **or** an OpenAI API key for real LLM analysis
+- No LLM key is required for local demos when `LLM_PROVIDER=mock`
 
 ### Steps
 
@@ -114,11 +115,12 @@ $EDITOR .env
 Edit `.env` (never commit this file):
 
 ```dotenv
-# LLM provider: "anthropic" or "openai"
-LLM_PROVIDER=anthropic
+# LLM provider: "mock", "anthropic", or "openai"
+LLM_PROVIDER=mock
 
 # Anthropic credentials (required when LLM_PROVIDER=anthropic)
 ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=your_model_here
 
 # OpenAI credentials (required when LLM_PROVIDER=openai)
 OPENAI_API_KEY=sk-...
@@ -132,8 +134,9 @@ LOG_LEVEL=INFO
 
 | Variable | Default | Description |
 |---|---|---|
-| `LLM_PROVIDER` | `anthropic` | Which LLM backend to use |
+| `LLM_PROVIDER` | `mock` | Which LLM backend to use (`mock`, `anthropic`, or `openai`) |
 | `ANTHROPIC_API_KEY` | — | Your Anthropic API key |
+| `ANTHROPIC_MODEL` | — | Your Anthropic model name |
 | `OPENAI_API_KEY` | — | Your OpenAI API key |
 | `INCIDENT_TRACKER_URL` | `http://localhost:5000` | Incident tracker base URL |
 | `LOG_LEVEL` | `INFO` | Python logging level |
@@ -164,6 +167,22 @@ python main.py --incident-id INC-001
 
 ```bash
 python main.py --dry-run --incident-id INC-042
+```
+
+### Run with the bundled mock incident tracker
+
+If you do not have a separate `incident-tracker-api` project, start the local mock API in one terminal:
+
+```bash
+source .venv/bin/activate
+python mock_incident_tracker.py
+```
+
+Then run triage in another terminal:
+
+```bash
+source .venv/bin/activate
+python main.py --dry-run --report
 ```
 
 ### Example output
@@ -288,8 +307,9 @@ llm-triage/
 │   ├── __init__.py        Package metadata
 │   ├── ingest.py          IncidentClient — reads incidents from tracker API
 │   ├── prompt.py          PromptBuilder — Jinja2 template rendering
-│   ├── analyzer.py        LLMAnalyzer — Anthropic / OpenAI integration
+│   ├── analyzer.py        LLMAnalyzer — mock / Anthropic / OpenAI integration
 │   └── reporter.py        IncidentReporter — enrichment + PATCH API
+├── mock_incident_tracker.py  Local demo incident tracker API
 ├── prompts/
 │   ├── classify.txt       Severity classification prompt template
 │   └── suggest.txt        Investigation steps prompt template
@@ -313,7 +333,7 @@ llm-triage/
 - [ ] **Slack / Teams notifications** — post enriched incidents to a SOC channel automatically.
 - [ ] **Prometheus metrics** — expose `incidents_processed_total`, `severity_counts`, `avg_priority_score`.
 - [ ] **Streaming LLM responses** — reduce time-to-first-token for large incident descriptions.
-- [ ] **Multi-incident batching** — send multiple incidents in one API call using Claude's context window.
+- [ ] **Multi-incident batching** — send multiple incidents in one API call using larger context windows.
 - [ ] **Confidence thresholds** — only auto-update the tracker when confidence ≥ configurable threshold.
 - [ ] **Feedback loop** — allow analysts to rate LLM suggestions, feed corrections back as few-shot examples.
 - [ ] **Docker image** — containerised deployment with a health endpoint.

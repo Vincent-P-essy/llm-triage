@@ -1,6 +1,7 @@
 """Tests for app.analyzer.LLMAnalyzer using mocked LLM clients."""
 
 import json
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -62,7 +63,8 @@ def test_analyze_anthropic_returns_parsed_dict(mock_anthropic_client):
         analyzer.provider = "anthropic"
         analyzer._client = mock_anthropic_client
 
-    result = analyzer.analyze(MOCK_INCIDENT, "classify prompt")
+    with patch.dict(os.environ, {"ANTHROPIC_MODEL": "test-model"}):
+        result = analyzer.analyze(MOCK_INCIDENT, "classify prompt")
     assert result["severity"] == "HIGH"
     assert result["confidence"] == 0.88
     assert "sql-injection" in result["tags"]
@@ -77,7 +79,8 @@ def test_suggest_anthropic_returns_parsed_dict(mock_anthropic_client):
     analyzer._client = mock_anthropic_client
 
     classification = {"severity": "HIGH"}
-    result = analyzer.suggest(MOCK_INCIDENT, classification, "suggest prompt")
+    with patch.dict(os.environ, {"ANTHROPIC_MODEL": "test-model"}):
+        result = analyzer.suggest(MOCK_INCIDENT, classification, "suggest prompt")
     assert result["priority_score"] == 8
     assert result["escalate_to"] == "SOC L2"
     assert len(result["immediate_actions"]) == 2
@@ -91,7 +94,8 @@ def test_analyze_invalid_json_returns_fallback(mock_anthropic_client):
     analyzer.provider = "anthropic"
     analyzer._client = mock_anthropic_client
 
-    result = analyzer.analyze(MOCK_INCIDENT, "classify prompt")
+    with patch.dict(os.environ, {"ANTHROPIC_MODEL": "test-model"}):
+        result = analyzer.analyze(MOCK_INCIDENT, "classify prompt")
     assert result["severity"] == "UNKNOWN"
     assert result["confidence"] == 0.0
 
@@ -124,3 +128,23 @@ def test_openai_analyze():
 
     result = analyzer.analyze(MOCK_INCIDENT, "classify prompt")
     assert result["severity"] == "HIGH"
+
+
+def test_mock_analyze_returns_deterministic_classification():
+    analyzer = LLMAnalyzer(provider="mock")
+
+    result = analyzer.analyze(MOCK_INCIDENT, "classify prompt")
+
+    assert result["severity"] == "HIGH"
+    assert result["confidence"] > 0
+    assert "sql-injection" in result["tags"]
+
+
+def test_mock_suggest_returns_deterministic_actions():
+    analyzer = LLMAnalyzer(provider="mock")
+
+    result = analyzer.suggest(MOCK_INCIDENT, {"severity": "HIGH"}, "suggest prompt")
+
+    assert result["priority_score"] == 8
+    assert result["escalate_to"] == "SOC L2"
+    assert "10.10.0.5" in result["immediate_actions"][0]
