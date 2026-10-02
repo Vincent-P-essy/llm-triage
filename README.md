@@ -10,6 +10,12 @@
 
 ---
 
+## Execution preview
+
+![llm-triage execution](docs/screenshots/execution.png)
+
+Local execution of `python -m pytest -v --tb=short tests/test_prompt.py tests/test_analyzer.py`. The input and output shown come from the repository example or test fixtures. [Verification](docs/verification.md).
+
 ## Why this project?
 
 Security Operations Centres (SOCs) at banks and financial institutions face a high volume of daily alerts.  Triaging each alert manually is slow, error-prone, and burns analyst capacity.  `llm-triage` acts as a first-responder layer:
